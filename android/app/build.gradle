@@ -43,5 +43,10 @@ flutter {
     source = "../.."
 }
 
-apply plugin: 'com.google.gms.google-services'  // Adicione esta linha
+apply plugin: 'com.google.gms.google-services'  
 
+dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:32.2.3")) // or latest version
+    implementation("com.google.firebase:firebase-firestore-ktx") // For Kotlin
+    // or implementation('com.google.firebase:firebase-firestore:24.6.0') for Java
+}

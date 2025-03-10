@@ -6,9 +6,17 @@ import 'home_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(); 
-  await Firebase.initializeApp(); // starta o Firebase
+
+  try {
+    await Firebase.initializeApp();
+    print("Firebase initialized successfully");
+  } catch (e) {
+    print("Firebase initialization failed: $e");
+  }
+
   runApp(MyApp());
 }
+
 
 class MyApp extends StatelessWidget {
   @override
