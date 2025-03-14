@@ -9,23 +9,50 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final TextEditingController _controller = TextEditingController();
   double? _resultado;
+  bool _isLoading = false;
 
   Future<void> _converter() async {
-    if (_controller.text.isEmpty) return;
+    String inputText = _controller.text.trim();
 
-    double metros = double.tryParse(_controller.text) ?? 0;
+    if (inputText.isEmpty) {
+      _mostrarMensagem("Por favor, insira um valor.");
+      return;
+    }
+
+    double? metros = double.tryParse(inputText);
+    if (metros == null || metros < 0) {
+      _mostrarMensagem("Insira um número válido e positivo.");
+      return;
+    }
+
     double km = metros / 1000;
 
     setState(() {
       _resultado = km;
+      _isLoading = true;
     });
 
-    // salva no Firestore
-    await FirebaseFirestore.instance.collection('conversions').add({
-      'metros': metros,
-      'km': km,
-      'timestamp': Timestamp.now(),
-    });
+    try {
+      await FirebaseFirestore.instance.collection('conversions').add({
+        'metros': metros,
+        'km': km,
+        'timestamp': Timestamp.now(),
+      });
+      _mostrarMensagem("Conversão salva com sucesso!");
+    } catch (e) {
+      _mostrarMensagem("Erro ao salvar no Firestore: $e");
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _mostrarMensagem(String mensagem) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(mensagem),
+      duration: Duration(seconds: 2),
+    ));
   }
 
   @override
@@ -43,8 +70,10 @@ class _HomePageState extends State<HomePage> {
             ),
             SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _converter,
-              child: Text('Converter'),
+              onPressed: _isLoading ? null : _converter,
+              child: _isLoading
+                  ? CircularProgressIndicator(color: Colors.white)
+                  : Text('Converter'),
             ),
             if (_resultado != null)
               Padding(
@@ -68,8 +97,13 @@ class _HomePageState extends State<HomePage> {
           .orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(child: Text("Nenhuma conversão registrada ainda."));
+        }
 
         final docs = snapshot.data!.docs;
 
@@ -79,11 +113,16 @@ class _HomePageState extends State<HomePage> {
             var data = docs[index].data() as Map<String, dynamic>;
             return ListTile(
               title: Text('${data['metros']} m → ${data['km']} km'),
-              subtitle: Text(data['timestamp'].toDate().toString()),
+              subtitle: Text(_formatarData(data['timestamp'])),
             );
           },
         );
       },
     );
+  }
+
+  String _formatarData(Timestamp timestamp) {
+    DateTime dateTime = timestamp.toDate();
+    return "${dateTime.day}/${dateTime.month}/${dateTime.year} - ${dateTime.hour}:${dateTime.minute}";
   }
 }

@@ -50,3 +50,4 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx") // For Kotlin
     // or implementation('com.google.firebase:firebase-firestore:24.6.0') for Java
 }
+
